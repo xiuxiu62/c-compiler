@@ -1,2 +1,7 @@
+/.cache
 /build
+
+*.log
+
 compile_commands.json
+cmake_install.cmake
