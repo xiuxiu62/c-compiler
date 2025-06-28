@@ -1,13 +1,18 @@
 #include "compiler.hpp"
+#include "memory.hpp"
 #include "stdio.h"
 #include "stdlib.h"
 
 int main(int argc, char *argv[]) {
-    printf("🔧 Modern C Compiler v1.0\n");
-    printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    init_compiler_memory();
+
+    printf("C Compiler v1.0\n");
+    printf("=============================================================================\n");
+
+    const char *program_name = argv[0] ? argv[0] : "";
 
     if (argc < 2) {
-        print_usage(argv[0]);
+        print_usage(program_name);
         return 1;
     }
 
@@ -19,16 +24,16 @@ int main(int argc, char *argv[]) {
     }
 
     // Display compilation info
-    printf("📁 Input files: %d\n", opts.input_count);
+    printf("Input files: %d\n", opts.input_count);
     for (int i = 0; i < opts.input_count; i++) {
-        printf("   • %s\n", opts.input_files[i]);
+        printf("   - %s\n", opts.input_files[i]);
     }
 
     if (opts.output_file) {
-        printf("📦 Output: %s\n", opts.output_file);
+        printf("Output: %s\n", opts.output_file);
     }
 
-    printf("🎯 Target: %s, Optimization: %s\n",
+    printf("Target: %s, Optimization: %s\n",
            opts.arch == ARCH_X86_64  ? "x86_64"
            : opts.arch == ARCH_ARM64 ? "arm64"
                                      : "riscv64",
@@ -37,7 +42,7 @@ int main(int argc, char *argv[]) {
            : opts.opt_level == OPT_SPEED ? "speed"
                                          : "debug");
 
-    printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    printf("=============================================================================\n");
 
     // Allocate arrays for file management
     char **obj_files = (char **)malloc(opts.input_count * sizeof(char *));
@@ -48,10 +53,10 @@ int main(int argc, char *argv[]) {
 
     // Compile each input file
     for (int i = 0; i < opts.input_count; i++) {
-        printf("🔨 Compiling %s...\n", opts.input_files[i]);
+        printf("Compiling %s...\n", opts.input_files[i]);
 
         if (!compile_file(opts.input_files[i], &opts)) {
-            fprintf(stderr, "❌ Failed to compile %s\n", opts.input_files[i]);
+            fprintf(stderr, "Failed to compile %s\n", opts.input_files[i]);
             success = false;
             break;
         }
@@ -71,34 +76,34 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf("✅ Generated %s\n", obj_file ? obj_file : "object file");
+        printf("Generated %s\n", obj_file ? obj_file : "object file");
     }
 
     // Link or create library if compilation succeeded and not compile-only
     if (success && !opts.compile_only) {
-        printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        printf("=============================================================================\n");
 
         if (opts.create_library) {
             // Create static library
             const char *lib_file = opts.output_file ? opts.output_file : "liboutput.a";
-            printf("📚 Creating library %s...\n", lib_file);
+            printf("Creating library %s...\n", lib_file);
 
             if (create_static_library(obj_files, obj_count, lib_file)) {
-                printf("✅ Library created successfully!\n");
+                printf("Library created successfully!\n");
             } else {
-                fprintf(stderr, "❌ Failed to create library\n");
+                fprintf(stderr, "Failed to create library\n");
                 success = false;
             }
         } else {
             // Link executable
             const char *exe_file = opts.output_file ? opts.output_file : "a.out";
-            printf("🔗 Linking %s...\n", exe_file);
+            printf("Linking %s...\n", exe_file);
 
             if (link_files(obj_files, obj_count, exe_file, &opts)) {
-                printf("✅ Executable created successfully!\n");
-                printf("🚀 Run with: ./%s\n", exe_file);
+                printf("Executable created successfully!\n");
+                printf("Run with: ./%s\n", exe_file);
             } else {
-                fprintf(stderr, "❌ Failed to link executable\n");
+                fprintf(stderr, "Failed to link executable\n");
                 success = false;
             }
         }
@@ -130,12 +135,14 @@ int main(int argc, char *argv[]) {
     }
 
     // Final status
-    printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    printf("=============================================================================\n");
     if (success) {
-        printf("🎉 Compilation completed successfully!\n");
+        printf("Compilation completed successfully!\n");
         return 0;
     } else {
-        printf("💥 Compilation failed!\n");
+        printf("Compilation failed!\n");
         return 1;
     }
+
+    deinit_compiler_memory();
 }

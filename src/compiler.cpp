@@ -1,16 +1,15 @@
-#include "compiler.hpp"
 #include "ast.hpp"
+#include "compiler.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 #include "sys/stat.h"
-#include "unistd.h"
 
 void print_usage(const char *program_name) {
     printf("Usage: %s [options] <input-files>\n\n", program_name);
-    printf("📋 Options:\n");
+    printf("  Options:\n");
     printf("  -o <file>         Output file name\n");
     printf("  -c                Compile only (don't link)\n");
     printf("  -lib              Create static library (.a)\n");
@@ -25,7 +24,7 @@ void print_usage(const char *program_name) {
     printf("  -l <library>      Link with library\n");
     printf("  -h, --help        Show this help\n");
     printf("  --version         Show version information\n\n");
-    printf("📂 Examples:\n");
+    printf("  Examples:\n");
     printf("  %s main.c                    # Compile to a.out\n", program_name);
     printf("  %s -o myapp main.c util.c    # Compile multiple files\n", program_name);
     printf("  %s -c main.c                 # Compile to object file only\n", program_name);
@@ -103,7 +102,7 @@ struct compile_options parse_arguments(int argc, char *argv[]) {
                 } else if (strcmp(argv[i], "riscv64") == 0) {
                     opts.arch = ARCH_RISCV64;
                 } else {
-                    fprintf(stderr, "❌ Unknown target architecture: %s\n", argv[i]);
+                    fprintf(stderr, "Unknown target architecture: %s\n", argv[i]);
                     exit(1);
                 }
             }
@@ -119,7 +118,7 @@ struct compile_options parse_arguments(int argc, char *argv[]) {
             // Input file
             opts.input_files[opts.input_count++] = strdup(arg);
         } else {
-            fprintf(stderr, "❌ Unknown option: %s\n", arg);
+            fprintf(stderr, "Unknown option: %s\n", arg);
             exit(1);
         }
     }
@@ -178,26 +177,26 @@ char *change_extension(const char *filename, const char *new_ext) {
 bool compile_file(const char *input_file, struct compile_options *opts) {
     // Check if input file exists
     if (!file_exists(input_file)) {
-        fprintf(stderr, "❌ Error: File not found: %s\n", input_file);
+        fprintf(stderr, "Error: File not found: %s\n", input_file);
         return false;
     }
 
     // Read source file
     char *source = read_file(input_file);
     if (!source) {
-        fprintf(stderr, "❌ Error: Cannot read file %s\n", input_file);
+        fprintf(stderr, "Error: Cannot read file %s\n", input_file);
         return false;
     }
 
     if (opts->verbose) {
-        printf("📖 Read %zu bytes from %s\n", strlen(source), input_file);
+        printf("Read %zu bytes from %s\n", strlen(source), input_file);
     }
 
     // Lexical analysis
     struct lexer lexer = create_lexer(source);
 
     if (opts->print_tokens) {
-        printf("🔤 Tokens for %s:\n", input_file);
+        printf("Tokens for %s:\n", input_file);
         struct lexer temp_lexer = lexer;
         while (true) {
             struct token token = next_token(&temp_lexer);
@@ -219,14 +218,14 @@ bool compile_file(const char *input_file, struct compile_options *opts) {
     ast_node *ast = parse(&parser);
 
     if (!ast || parser.error_count > 0) {
-        fprintf(stderr, "❌ Parse error in %s (%d errors)\n", input_file, parser.error_count);
+        fprintf(stderr, "Parse error in %s (%d errors)\n", input_file, parser.error_count);
         free(source);
         free_token(&parser.current_token);
         return false;
     }
 
     if (opts->print_ast) {
-        printf("🌳 AST for %s:\n", input_file);
+        printf("AST for %s:\n", input_file);
         print_ast(ast, 0);
         printf("\n");
     }
@@ -236,7 +235,7 @@ bool compile_file(const char *input_file, struct compile_options *opts) {
     char *assembly = generate(&codegen, ast);
 
     if (codegen.error_count > 0) {
-        fprintf(stderr, "❌ Code generation error in %s (%d errors)\n", input_file, codegen.error_count);
+        fprintf(stderr, "Code generation error in %s (%d errors)\n", input_file, codegen.error_count);
         destroy_code_generator(&codegen);
         free_node(ast);
         free(source);
@@ -247,7 +246,7 @@ bool compile_file(const char *input_file, struct compile_options *opts) {
     // Write assembly file
     char *asm_file = change_extension(input_file, ".s");
     if (!asm_file) {
-        fprintf(stderr, "❌ Error: Memory allocation failed\n");
+        fprintf(stderr, "Error: Memory allocation failed\n");
         destroy_code_generator(&codegen);
         free_node(ast);
         free(source);
@@ -257,7 +256,7 @@ bool compile_file(const char *input_file, struct compile_options *opts) {
 
     FILE *output_file = fopen(asm_file, "w");
     if (!output_file) {
-        fprintf(stderr, "❌ Error: Cannot write to %s\n", asm_file);
+        fprintf(stderr, "Error: Cannot write to %s\n", asm_file);
         free(asm_file);
         destroy_code_generator(&codegen);
         free_node(ast);
@@ -270,7 +269,7 @@ bool compile_file(const char *input_file, struct compile_options *opts) {
     fclose(output_file);
 
     if (opts->verbose) {
-        printf("📝 Generated assembly: %s\n", asm_file);
+        printf("Generated assembly: %s\n", asm_file);
     }
 
     // Assemble to object file
@@ -281,7 +280,7 @@ bool compile_file(const char *input_file, struct compile_options *opts) {
         assemble_success = assemble_file(asm_file, obj_file);
 
         if (assemble_success && opts->verbose) {
-            printf("🔧 Generated object file: %s\n", obj_file);
+            printf("Generated object file: %s\n", obj_file);
         }
     }
 
@@ -302,7 +301,7 @@ bool assemble_file(const char *asm_file, const char *obj_file) {
 
     int result = system(command);
     if (result != 0) {
-        fprintf(stderr, "❌ Assembly failed for %s\n", asm_file);
+        fprintf(stderr, "Assembly failed for %s\n", asm_file);
         return false;
     }
 
@@ -311,7 +310,7 @@ bool assemble_file(const char *asm_file, const char *obj_file) {
 
 bool link_files(char **obj_files, int obj_count, const char *output_file, struct compile_options *opts) {
     if (obj_count == 0) {
-        fprintf(stderr, "❌ No object files to link\n");
+        fprintf(stderr, "No object files to link\n");
         return false;
     }
 
@@ -348,12 +347,12 @@ bool link_files(char **obj_files, int obj_count, const char *output_file, struct
     len += snprintf(command + len, sizeof(command) - len, " 2>/dev/null");
 
     if (opts->verbose) {
-        printf("🔗 Link command: %s\n", command);
+        printf("Link command: %s\n", command);
     }
 
     int result = system(command);
     if (result != 0) {
-        fprintf(stderr, "❌ Linking failed\n");
+        fprintf(stderr, "Linking failed\n");
         return false;
     }
 
@@ -362,7 +361,7 @@ bool link_files(char **obj_files, int obj_count, const char *output_file, struct
 
 bool create_static_library(char **obj_files, int obj_count, const char *lib_file) {
     if (obj_count == 0) {
-        fprintf(stderr, "❌ No object files for library\n");
+        fprintf(stderr, "No object files for library\n");
         return false;
     }
 
@@ -377,7 +376,7 @@ bool create_static_library(char **obj_files, int obj_count, const char *lib_file
 
     int result = system(command);
     if (result != 0) {
-        fprintf(stderr, "❌ Library creation failed\n");
+        fprintf(stderr, "Library creation failed\n");
         return false;
     }
 

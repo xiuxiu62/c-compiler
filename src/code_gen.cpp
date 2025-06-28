@@ -1,3 +1,4 @@
+#include "ast.hpp"
 #include "code_gen.hpp"
 #include "stdio.h"
 #include "stdlib.h"
@@ -515,6 +516,139 @@ void generate_while_statement(code_generator *gen, ast_node *node) {
     free(end_label);
 }
 
+void generate_for_statement(code_generator *gen, ast_node *node) {
+    if (node->child_count < 3) return;
+
+    ast_node *init = node->children[0];
+    ast_node *condition = node->children[1];
+    ast_node *update = node->children[2];
+    ast_node *body = (node->child_count > 3) ? node->children[3] : NULL;
+
+    char *loop_label = generate_label(gen, "for_loop_");
+    char *condition_label = generate_label(gen, "for_condition_");
+    char *end_label = generate_label(gen, "for_end_");
+
+    // Generate initialization
+    if (init) {
+        generate_node(gen, init);
+    }
+
+    // Jump to condition check
+    append_instruction(gen, "jmp", condition_label);
+
+    // Loop body label
+    append_label(gen, loop_label);
+
+    // Generate body
+    if (body) {
+        generate_node(gen, body);
+    }
+
+    // Generate update expression
+    if (update) {
+        generate_node(gen, update);
+    }
+
+    // Condition check
+    append_label(gen, condition_label);
+    if (condition) {
+        generate_node(gen, condition);
+        append_instruction(gen, "test", "%rax, %rax");
+        append_instruction(gen, "jne", loop_label);
+    } else {
+        // No condition means infinite loop (for(;;))
+        append_instruction(gen, "jmp", loop_label);
+    }
+
+    // End label
+    append_label(gen, end_label);
+
+    free(loop_label);
+    free(condition_label);
+    free(end_label);
+}
+
+void generate_switch_statement(code_generator *gen, ast_node *node) {
+    if (node->child_count < 2) return;
+
+    ast_node *expr = node->children[0];
+    ast_node *body = node->children[1];
+
+    char *end_label = generate_label(gen, "switch_end_");
+    char *default_label = generate_label(gen, "switch_default_");
+
+    // Generate switch expression
+    generate_node(gen, expr);
+    append_instruction(gen, "push", "%rax"); // Save switch value
+
+    // Generate case comparisons
+    bool has_default = false;
+    for (int i = 0; i < body->child_count; i++) {
+        ast_node *case_node = body->children[i];
+
+        if (case_node->type == NODE_CASE_STATEMENT) {
+            if (case_node->child_count > 0) {
+                ast_node *case_value = case_node->children[0];
+                char *case_label = generate_label(gen, "case_");
+
+                // Compare switch value with case value
+                append_instruction(gen, "mov", "(%rsp), %rax"); // Load switch value
+                generate_node(gen, case_value);
+                append_instruction(gen, "mov", "%rax, %rbx");
+                append_instruction(gen, "mov", "(%rsp), %rax");
+                append_instruction(gen, "cmp", "%rbx, %rax");
+                append_instruction(gen, "je", case_label);
+
+                free(case_label);
+            }
+        } else if (case_node->type == NODE_DEFAULT_STATEMENT) {
+            has_default = true;
+        }
+    }
+
+    // If no case matched, jump to default or end
+    if (has_default) {
+        append_instruction(gen, "jmp", default_label);
+    } else {
+        append_instruction(gen, "jmp", end_label);
+    }
+
+    // Generate case bodies
+    for (int i = 0; i < body->child_count; i++) {
+        ast_node *case_node = body->children[i];
+
+        if (case_node->type == NODE_CASE_STATEMENT) {
+            if (case_node->child_count > 0) {
+                ast_node *case_value = case_node->children[0];
+                char *case_label = generate_label(gen, "case_");
+
+                append_label(gen, case_label);
+
+                // Generate case body (statements after the case value)
+                for (int j = 1; j < case_node->child_count; j++) {
+                    generate_node(gen, case_node->children[j]);
+                }
+
+                free(case_label);
+            }
+        } else if (case_node->type == NODE_DEFAULT_STATEMENT) {
+            append_label(gen, default_label);
+
+            // Generate default body
+            for (int j = 0; j < case_node->child_count; j++) {
+                generate_node(gen, case_node->children[j]);
+            }
+        }
+    }
+
+    // End label
+    append_label(gen, end_label);
+    append_instruction(gen, "add", "$8, %rsp"); // Clean up switch value from stack
+
+    free(end_label);
+    free(default_label);
+}
+
 void generate_return_statement(code_generator *gen, ast_node *node) {
     if (node->child_count > 0) {
         // Generate return value
@@ -527,6 +661,30 @@ void generate_return_statement(code_generator *gen, ast_node *node) {
 
     // Jump to function epilogue
     generate_function_epilogue(gen);
+}
+
+void generate_break_statement(code_generator *gen, ast_node *node) {
+    // For break statements, we need to jump to the nearest loop/switch end
+    // This is a simplified version - a real implementation would need
+    // to track the current loop/switch context
+    append_comment(gen, "break statement");
+
+    // In a more complete implementation, you'd maintain a stack of
+    // break/continue labels and jump to the appropriate one
+    // For now, this is a placeholder that would need context tracking
+    append_instruction(gen, "# break", "- needs context tracking");
+}
+
+void generate_continue_statement(code_generator *gen, ast_node *node) {
+    // For continue statements, we need to jump to the nearest loop condition
+    // This is a simplified version - a real implementation would need
+    // to track the current loop context
+    append_comment(gen, "continue statement");
+
+    // In a more complete implementation, you'd maintain a stack of
+    // break/continue labels and jump to the appropriate one
+    // For now, this is a placeholder that would need context tracking
+    append_instruction(gen, "# continue", "- needs context tracking");
 }
 
 // Expression generation
